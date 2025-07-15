@@ -51,7 +51,6 @@ if tab == 'Sales Entry':
 
         sale_log.to_csv('sales_log.csv', index=False)
         st.success(f"Sale of {quantity_sold} {selected_product} recorded!")
-        st.experimental_rerun()
 
 # ----------------- INVENTORY DASHBOARD PAGE -----------------
 elif tab == 'Inventory Dashboard':
