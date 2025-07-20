@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # Load inventory
-inventory_file = 'inventory_2024_raw.xlsx'
+inventory_file = 'inventory_2024_detailed-2.xlsx'
 inventory_df = pd.read_excel(inventory_file)
 
 # Sidebar navigation
