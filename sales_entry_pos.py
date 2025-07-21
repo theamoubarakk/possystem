@@ -111,7 +111,19 @@ with col2:
             st.write(f"**Revenue Today:** {today_revenue:.2f} $")
 
 
-            # --- Download Sales Log for a Specific Day ---
+        sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
+        st.dataframe(sales_log_df, use_container_width=True, height=400)
+
+        total_sales = sales_log_df['Total Sale Amount'].sum()
+        total_transactions = len(sales_log_df)
+        st.write(f"**Total Transactions:** {total_transactions}")
+        st.write(f"**Total Sales Revenue:** {total_sales:.2f} $")
+
+
+
+
+
+      # --- Download Sales Log for a Specific Day ---
     st.markdown("---")
     st.subheader("📥 Export Daily Sales Report")
 
@@ -130,14 +142,6 @@ with col2:
             file_name=f"sales_report_{selected_day_str}.csv",
             mime='text/csv'
         )
-
-        sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
-        st.dataframe(sales_log_df, use_container_width=True, height=400)
-
-        total_sales = sales_log_df['Total Sale Amount'].sum()
-        total_transactions = len(sales_log_df)
-        st.write(f"**Total Transactions:** {total_transactions}")
-        st.write(f"**Total Sales Revenue:** {total_sales:.2f} $")
 
     except FileNotFoundError:
         st.warning("No sales have been recorded yet.")
