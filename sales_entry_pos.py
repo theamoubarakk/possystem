@@ -12,8 +12,18 @@ st.set_page_config(page_title="Baba Jina POS", layout="wide")
 st.title("📦 Baba Jina Toys POS System")
 st.header("Sales Entry Form")
 
-product_list = inventory_df['Product Name'].dropna().unique()
-selected_product = st.selectbox("Select Product:", product_list)
+# Columns for Product, Customer Name, and Phone
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    product_list = inventory_df['Product Name'].dropna().unique()
+    selected_product = st.selectbox("Product", product_list)
+
+with col2:
+    customer_name = st.text_input("Customer Name")
+
+with col3:
+    customer_phone = st.text_input("Phone Number")
 
 product_row = inventory_df[inventory_df['Product Name'] == selected_product].iloc[0]
 price_per_unit = product_row['Price Per Unit']
@@ -34,6 +44,8 @@ if st.button("Record Sale", type="primary") and confirm:
 
     sale_log = pd.DataFrame({
         'Date': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        'Customer Name': [customer_name],
+        'Phone Number': [customer_phone],
         'Product Name': [selected_product],
         'Quantity Sold': [quantity_sold],
         'Unit Price': [price_per_unit],
