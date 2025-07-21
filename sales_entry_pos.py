@@ -90,6 +90,7 @@ with col1:
     st.write(f"**Total Items in Stock:** {int(total_items)}")
 
 # SALES LOG DASHBOARD (RIGHT)
+# SALES LOG DASHBOARD (RIGHT)
 with col2:
     st.header("📈 Sales Log Dashboard")
 
@@ -103,13 +104,11 @@ with col2:
 
         st.subheader(f"📅 Today's Summary: {today}")
 
-        # Side-by-side display
         summary_col1, summary_col2 = st.columns(2)
         with summary_col1:
             st.write(f"**Transactions Today:** {today_transactions}")
         with summary_col2:
             st.write(f"**Revenue Today:** {today_revenue:.2f} $")
-
 
         sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
         st.dataframe(sales_log_df, use_container_width=True, height=400)
@@ -119,29 +118,28 @@ with col2:
         st.write(f"**Total Transactions:** {total_transactions}")
         st.write(f"**Total Sales Revenue:** {total_sales:.2f} $")
 
+    except FileNotFoundError:
+        st.warning("No sales have been recorded yet.")
+        sales_log_df = pd.DataFrame()  # Ensure variable exists if file is missing
 
-
-
-
-      # --- Download Sales Log for a Specific Day ---
+    # --- Download Sales Log for a Specific Day ---
     st.markdown("---")
     st.subheader("📥 Export Daily Sales Report")
 
-    selected_day = st.date_input("Select a day to download its sales transactions:")
+    if not sales_log_df.empty:
+        selected_day = st.date_input("Select a day to download its sales transactions:")
+        selected_day_str = selected_day.strftime("%Y-%m-%d")
+        day_sales = sales_log_df[sales_log_df['Date'].str.startswith(selected_day_str)]
 
-    selected_day_str = selected_day.strftime("%Y-%m-%d")
-    day_sales = sales_log_df[sales_log_df['Date'].str.startswith(selected_day_str)]
-
-    if day_sales.empty:
-        st.info(f"No sales recorded on {selected_day_str}.")
+        if day_sales.empty:
+            st.info(f"No sales recorded on {selected_day_str}.")
+        else:
+            csv = day_sales.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label=f"Download Sales Report for {selected_day_str}",
+                data=csv,
+                file_name=f"sales_report_{selected_day_str}.csv",
+                mime='text/csv'
+            )
     else:
-        csv = day_sales.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label=f"Download Sales Report for {selected_day_str}",
-            data=csv,
-            file_name=f"sales_report_{selected_day_str}.csv",
-            mime='text/csv'
-        )
-
-    except FileNotFoundError:
-        st.warning("No sales have been recorded yet.")
+        st.info("Daily sales export unavailable (no sales data found).")
