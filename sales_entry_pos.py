@@ -110,6 +110,27 @@ with col2:
         with summary_col2:
             st.write(f"**Revenue Today:** {today_revenue:.2f} $")
 
+
+            # --- Download Sales Log for a Specific Day ---
+    st.markdown("---")
+    st.subheader("📥 Export Daily Sales Report")
+
+    selected_day = st.date_input("Select a day to download its sales transactions:")
+
+    selected_day_str = selected_day.strftime("%Y-%m-%d")
+    day_sales = sales_log_df[sales_log_df['Date'].str.startswith(selected_day_str)]
+
+    if day_sales.empty:
+        st.info(f"No sales recorded on {selected_day_str}.")
+    else:
+        csv = day_sales.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label=f"Download Sales Report for {selected_day_str}",
+            data=csv,
+            file_name=f"sales_report_{selected_day_str}.csv",
+            mime='text/csv'
+        )
+
         sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
         st.dataframe(sales_log_df, use_container_width=True, height=400)
 
