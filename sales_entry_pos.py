@@ -102,8 +102,13 @@ with col2:
         today_transactions = len(today_sales)
 
         st.subheader(f"📅 Today's Summary: {today}")
-        st.write(f"**Transactions Today:** {today_transactions}")
-        st.write(f"**Revenue Today:** {today_revenue:.2f} $")
+
+        # Side-by-side display
+        summary_col1, summary_col2 = st.columns(2)
+        with summary_col1:
+            st.write(f"**Transactions Today:** {today_transactions}")
+        with summary_col2:
+            st.write(f"**Revenue Today:** {today_revenue:.2f} $")
 
         sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
         st.dataframe(sales_log_df, use_container_width=True, height=400)
