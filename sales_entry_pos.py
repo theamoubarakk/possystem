@@ -73,6 +73,10 @@ col1, col2 = st.columns(2)
 with col1:
     st.header("📊 Inventory Dashboard")
 
+    # Product Search Bar
+    search_term = st.text_input("🔍 Search Product Name")
+    filtered_inventory = inventory_df[inventory_df['Product Name'].str.contains(search_term, case=False, na=False)]
+
     def highlight_stock(row):
         if row['Quantity In Stock'] == 0:
             return ['background-color: red; color: white'] * len(row)
@@ -81,7 +85,7 @@ with col1:
         else:
             return [''] * len(row)
 
-    styled_table = inventory_df.style.apply(highlight_stock, axis=1)
+    styled_table = filtered_inventory.style.apply(highlight_stock, axis=1)
 
     st.write("**Current Inventory Status:**")
     st.dataframe(styled_table, use_container_width=True, height=400)
@@ -115,7 +119,6 @@ with col2:
         total_sales = sales_log_df['Total Sale Amount'].sum()
         total_transactions = len(sales_log_df)
 
-        # BOTTOM ROW: Totals + Export CSV
         totals_col, export_col = st.columns([1, 1.5])
 
         with totals_col:
@@ -141,3 +144,22 @@ with col2:
 
     except FileNotFoundError:
         st.warning("No sales have been recorded yet.")
+
+# --- OPTIONAL ANALYTICS SECTION ---
+st.markdown("---")
+st.header("📊 Optional Analytics")
+
+try:
+    sales_log_df = pd.read_csv('sales_log.csv')
+
+    st.subheader("🏆 Top-Selling Products")
+    top_products = sales_log_df.groupby('Product Name')['Quantity Sold'].sum().sort_values(ascending=False).head(5)
+    st.dataframe(top_products.reset_index().rename(columns={'Quantity Sold': 'Total Sold'}))
+
+    st.subheader("📅 Monthly Revenue")
+    sales_log_df['Date'] = pd.to_datetime(sales_log_df['Date'])
+    monthly_revenue = sales_log_df.groupby(sales_log_df['Date'].dt.to_period('M'))['Total Sale Amount'].sum()
+    st.dataframe(monthly_revenue.reset_index().rename(columns={'Date': 'Month', 'Total Sale Amount': 'Revenue'}))
+
+except FileNotFoundError:
+    st.info("Analytics unavailable (no sales data found).")
