@@ -147,7 +147,7 @@ with col2:
 
 # --- OPTIONAL ANALYTICS SECTION ---
 st.markdown("---")
-st.header("📊 Optional Analytics")
+st.header("📊 Analytics View ")
 
 try:
     sales_log_df = pd.read_csv('sales_log.csv')
