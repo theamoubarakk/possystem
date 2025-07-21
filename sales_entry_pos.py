@@ -10,7 +10,6 @@ st.set_page_config(page_title="Baba Jina POS", layout="wide")
 
 # --- SALES ENTRY FORM ---
 st.title("📦 Baba Jina Toys POS System")
-
 st.header("Sales Entry Form")
 
 product_list = inventory_df['Product Name'].dropna().unique()
@@ -24,11 +23,12 @@ st.write(f"**Price per unit:** {price_per_unit}")
 st.write(f"**Available stock:** {quantity_in_stock}")
 
 quantity_sold = st.number_input("Enter quantity sold:", min_value=1, max_value=int(quantity_in_stock), step=1)
-
 total_sale = quantity_sold * price_per_unit
 st.write(f"**Total Sale Amount:** {total_sale} $")
 
-if st.button("Record Sale"):
+confirm = st.checkbox("Confirm sale submission")
+
+if st.button("Record Sale", type="primary") and confirm:
     inventory_df.loc[inventory_df['Product Name'] == selected_product, 'Quantity In Stock'] -= quantity_sold
     inventory_df.to_excel(inventory_file, index=False)
 
@@ -49,41 +49,57 @@ if st.button("Record Sale"):
     sale_log.to_csv('sales_log.csv', index=False)
     st.success(f"Sale of {quantity_sold} {selected_product} recorded!")
 
+    updated_stock = inventory_df[inventory_df['Product Name'] == selected_product]['Quantity In Stock'].values[0]
+    st.info(f"Updated stock for **{selected_product}**: {int(updated_stock)} units remaining.")
+
 st.markdown("---")
 
-# --- INVENTORY DASHBOARD ---
-st.header("📊 Inventory Dashboard")
+# --- SPLIT LAYOUT: Inventory Dashboard & Sales Log Dashboard ---
+col1, col2 = st.columns(2)
 
-def highlight_stock(row):
-    if row['Quantity In Stock'] == 0:
-        return ['background-color: red; color: white'] * len(row)
-    elif row['Quantity In Stock'] < 5:
-        return ['background-color: yellow'] * len(row)
-    else:
-        return [''] * len(row)
+# INVENTORY DASHBOARD (LEFT)
+with col1:
+    st.header("📊 Inventory Dashboard")
 
-styled_table = inventory_df.style.apply(highlight_stock, axis=1)
+    def highlight_stock(row):
+        if row['Quantity In Stock'] == 0:
+            return ['background-color: red; color: white'] * len(row)
+        elif row['Quantity In Stock'] < 5:
+            return ['background-color: yellow'] * len(row)
+        else:
+            return [''] * len(row)
 
-with st.container():
+    styled_table = inventory_df.style.apply(highlight_stock, axis=1)
+
     st.write("**Current Inventory Status:**")
-    st.dataframe(styled_table, use_container_width=True, height=300)
+    st.dataframe(styled_table, use_container_width=True, height=400)
 
-total_items = inventory_df['Quantity In Stock'].sum()
-st.write(f"**Total Items in Stock:** {int(total_items)}")
+    total_items = inventory_df['Quantity In Stock'].sum()
+    st.write(f"**Total Items in Stock:** {int(total_items)}")
 
-st.markdown("---")
+# SALES LOG DASHBOARD (RIGHT)
+with col2:
+    st.header("📈 Sales Log Dashboard")
 
-# --- SALES LOG DASHBOARD ---
-st.header("📈 Sales Log Dashboard")
+    try:
+        sales_log_df = pd.read_csv('sales_log.csv')
 
-try:
-    sales_log_df = pd.read_csv('sales_log.csv')
-    st.dataframe(sales_log_df, use_container_width=True, height=300)
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_sales = sales_log_df[sales_log_df['Date'].str.startswith(today)]
+        today_revenue = today_sales['Total Sale Amount'].sum()
+        today_transactions = len(today_sales)
 
-    total_sales = sales_log_df['Total Sale Amount'].sum()
-    total_transactions = len(sales_log_df)
-    st.write(f"**Total Transactions:** {total_transactions}")
-    st.write(f"**Total Sales Revenue:** {total_sales:.2f} $")
+        st.subheader(f"📅 Today's Summary: {today}")
+        st.write(f"**Transactions Today:** {today_transactions}")
+        st.write(f"**Revenue Today:** {today_revenue:.2f} $")
 
-except FileNotFoundError:
-    st.warning("No sales have been recorded yet.")
+        sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
+        st.dataframe(sales_log_df, use_container_width=True, height=400)
+
+        total_sales = sales_log_df['Total Sale Amount'].sum()
+        total_transactions = len(sales_log_df)
+        st.write(f"**Total Transactions:** {total_transactions}")
+        st.write(f"**Total Sales Revenue:** {total_sales:.2f} $")
+
+    except FileNotFoundError:
+        st.warning("No sales have been recorded yet.")
