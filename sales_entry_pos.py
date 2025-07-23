@@ -156,7 +156,6 @@ try:
     sales_log_df = pd.read_csv('sales_log.csv')
     sales_log_df['Date'] = pd.to_datetime(sales_log_df['Date'])
 
-    # Create two columns
     col1, col2 = st.columns(2)
 
     # --- LEFT: Top-Selling Products ---
@@ -189,7 +188,7 @@ try:
         ax2.set_xlabel("Day of Month")
         ax2.set_ylabel("Revenue ($)")
         ax2.set_title(f"Daily Revenue - {month_str}")
-        ax2.grid(True)
+        # No ax2.grid() here
         st.pyplot(fig2)
 
 except FileNotFoundError:
