@@ -146,7 +146,6 @@ with col2:
         st.warning("No sales have been recorded yet.")
 
 # --- OPTIONAL ANALYTICS SECTION ---
-# --- OPTIONAL ANALYTICS SECTION ---
 import matplotlib.pyplot as plt
 
 st.markdown("---")
@@ -156,29 +155,35 @@ try:
     sales_log_df = pd.read_csv('sales_log.csv')
     sales_log_df['Date'] = pd.to_datetime(sales_log_df['Date'])
 
-    # --- Top-Selling Products Bar Chart ---
-    st.subheader("🏆 Top-Selling Products")
-    top_products = sales_log_df.groupby('Product Name')['Quantity Sold'].sum().sort_values(ascending=True)
+    # --- Create two columns side by side ---
+    col1, col2 = st.columns(2)
 
-    fig1, ax1 = plt.subplots(figsize=(6, 3))
-    ax1.barh(top_products.index, top_products.values, color='mediumseagreen')
-    ax1.set_xlabel("Units Sold")
-    ax1.set_title("Top-Selling Products")
-    st.pyplot(fig1)
+    # --- Top-Selling Products Bar Chart (LEFT) ---
+    with col1:
+        st.subheader("🏆 Top-Selling Products")
+        top_products = sales_log_df.groupby('Product Name')['Quantity Sold'].sum().sort_values(ascending=True)
 
-    # --- Monthly Revenue Line Chart ---
-    st.subheader("📅 Monthly Sales Revenue")
-    monthly_revenue = sales_log_df.groupby(sales_log_df['Date'].dt.to_period('M'))['Total Sale Amount'].sum()
-    monthly_revenue.index = monthly_revenue.index.astype(str)
+        fig1, ax1 = plt.subplots(figsize=(5, 3))
+        ax1.barh(top_products.index, top_products.values, color='mediumseagreen')
+        ax1.set_xlabel("Units Sold")
+        ax1.set_title("Top-Selling Products")
+        st.pyplot(fig1)
 
-    fig2, ax2 = plt.subplots(figsize=(6, 3))
-    ax2.plot(monthly_revenue.index, monthly_revenue.values, marker='o', color='dodgerblue')
-    ax2.set_xlabel("Month")
-    ax2.set_ylabel("Revenue ($)")
-    ax2.set_title("Monthly Sales Revenue")
-    ax2.grid(True)
-    st.pyplot(fig2)
+    # --- Monthly Revenue Line Chart (RIGHT) ---
+    with col2:
+        st.subheader("📅 Monthly Sales Revenue")
+        monthly_revenue = sales_log_df.groupby(sales_log_df['Date'].dt.to_period('M'))['Total Sale Amount'].sum()
+        monthly_revenue.index = monthly_revenue.index.astype(str)
+
+        fig2, ax2 = plt.subplots(figsize=(5, 3))
+        ax2.plot(monthly_revenue.index, monthly_revenue.values, marker='o', color='dodgerblue')
+        ax2.set_xlabel("Month")
+        ax2.set_ylabel("Revenue ($)")
+        ax2.set_title("Monthly Revenue")
+        ax2.grid(True)
+        st.pyplot(fig2)
 
 except FileNotFoundError:
     st.info("Analytics unavailable (no sales data found).")
+
 
