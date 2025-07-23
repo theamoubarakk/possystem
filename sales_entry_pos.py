@@ -170,20 +170,26 @@ try:
         ax1.set_title("Top-Selling Products")
         st.pyplot(fig1)
 
-    # --- Cumulative Monthly Revenue Line Chart (RIGHT) ---
+    # --- Daily Revenue Line Chart for Selected Month (RIGHT) ---
     with col2:
-        st.subheader("📅 Monthly Cumulative Revenue")
-        monthly_revenue = sales_log_df.groupby(sales_log_df['Date'].dt.to_period('M'))['Total Sale Amount'].sum()
-        monthly_revenue.index = monthly_revenue.index.astype(str)
-        cumulative_revenue = monthly_revenue.cumsum()
+        st.subheader("📅 Daily Revenue (Selected Month)")
+        selected_month = st.date_input("Select Month to Analyze", value=datetime.today().replace(day=1), key="daily_rev_input")
+
+        # Filter sales from that month
+        month_str = selected_month.strftime("%Y-%m")
+        monthly_sales = sales_log_df[sales_log_df['Date'].dt.strftime("%Y-%m") == month_str]
+
+        # Aggregate by day
+        daily_revenue = monthly_sales.groupby(sales_log_df['Date'].dt.day)['Total Sale Amount'].sum()
 
         fig2, ax2 = plt.subplots(figsize=(5, 3))
-        ax2.plot(cumulative_revenue.index, cumulative_revenue.values, marker='o', color='dodgerblue')
-        ax2.set_xlabel("Month")
-        ax2.set_ylabel("Cumulative Revenue ($)")
-        ax2.set_title("Cumulative Monthly Revenue")
+        ax2.plot(daily_revenue.index, daily_revenue.values, marker='o', color='dodgerblue')
+        ax2.set_xlabel("Day of Month")
+        ax2.set_ylabel("Revenue ($)")
+        ax2.set_title(f"Daily Revenue - {month_str}")
         ax2.grid(True)
         st.pyplot(fig2)
 
 except FileNotFoundError:
     st.info("Analytics unavailable (no sales data found).")
+
