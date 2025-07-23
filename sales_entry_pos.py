@@ -156,10 +156,10 @@ try:
     sales_log_df = pd.read_csv('sales_log.csv')
     sales_log_df['Date'] = pd.to_datetime(sales_log_df['Date'])
 
-    # --- Create two columns side by side ---
+    # Create two columns
     col1, col2 = st.columns(2)
 
-    # --- Top-Selling Products Bar Chart (LEFT) ---
+    # --- LEFT: Top-Selling Products ---
     with col1:
         st.subheader("🏆 Top-Selling Products")
         top_products = sales_log_df.groupby('Product Name')['Quantity Sold'].sum().sort_values(ascending=True)
@@ -170,22 +170,19 @@ try:
         ax1.set_title("Top-Selling Products")
         st.pyplot(fig1)
 
-    # --- Daily Revenue Line Chart for Selected Month (RIGHT) ---
-        # --- Daily Revenue Line Chart for Selected Month (RIGHT) ---
+    # --- RIGHT: Daily Revenue for Selected Month ---
     with col2:
         st.subheader("📅 Daily Revenue (Selected Month)")
         selected_month = st.date_input("Select Month to Analyze", value=datetime.today().replace(day=1), key="daily_rev_input")
 
-        # Filter sales from that month
         month_str = selected_month.strftime("%Y-%m")
         monthly_sales = sales_log_df[sales_log_df['Date'].dt.strftime("%Y-%m") == month_str]
 
-        # Group by day and reindex to full month
         daily_revenue = monthly_sales.groupby(sales_log_df['Date'].dt.day)['Total Sale Amount'].sum()
-        full_range = pd.Series(index=range(1, 32), dtype=float)  # Assume 31-day max
+        full_range = pd.Series(index=range(1, 32), dtype=float)
         daily_revenue = full_range.add(daily_revenue, fill_value=0)
 
-        fig2, ax2 = plt.subplots(figsize=(6, 3))
+        fig2, ax2 = plt.subplots(figsize=(5, 3))
         ax2.plot(daily_revenue.index, daily_revenue.values, marker='o', color='dodgerblue')
         ax2.set_xlim(1, 31)
         ax2.set_xticks(range(1, 32, 2))
@@ -195,4 +192,5 @@ try:
         ax2.grid(True)
         st.pyplot(fig2)
 
-
+except FileNotFoundError:
+    st.info("Analytics unavailable (no sales data found).")
