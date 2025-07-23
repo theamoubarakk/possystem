@@ -171,6 +171,7 @@ try:
         st.pyplot(fig1)
 
     # --- Daily Revenue Line Chart for Selected Month (RIGHT) ---
+        # --- Daily Revenue Line Chart for Selected Month (RIGHT) ---
     with col2:
         st.subheader("📅 Daily Revenue (Selected Month)")
         selected_month = st.date_input("Select Month to Analyze", value=datetime.today().replace(day=1), key="daily_rev_input")
@@ -179,17 +180,19 @@ try:
         month_str = selected_month.strftime("%Y-%m")
         monthly_sales = sales_log_df[sales_log_df['Date'].dt.strftime("%Y-%m") == month_str]
 
-        # Aggregate by day
+        # Group by day and reindex to full month
         daily_revenue = monthly_sales.groupby(sales_log_df['Date'].dt.day)['Total Sale Amount'].sum()
+        full_range = pd.Series(index=range(1, 32), dtype=float)  # Assume 31-day max
+        daily_revenue = full_range.add(daily_revenue, fill_value=0)
 
-        fig2, ax2 = plt.subplots(figsize=(5, 3))
+        fig2, ax2 = plt.subplots(figsize=(6, 3))
         ax2.plot(daily_revenue.index, daily_revenue.values, marker='o', color='dodgerblue')
+        ax2.set_xlim(1, 31)
+        ax2.set_xticks(range(1, 32, 2))
         ax2.set_xlabel("Day of Month")
         ax2.set_ylabel("Revenue ($)")
         ax2.set_title(f"Daily Revenue - {month_str}")
         ax2.grid(True)
         st.pyplot(fig2)
 
-except FileNotFoundError:
-    st.info("Analytics unavailable (no sales data found).")
 
