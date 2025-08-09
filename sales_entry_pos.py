@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 
 # Load inventory
 inventory_file = 'inventory_2024_detailed-2.xlsx'
@@ -12,7 +12,29 @@ st.set_page_config(page_title="Baba Jina POS", layout="wide")
 st.title("📦 Baba Jina Toys POS System")
 st.header("Sales Entry Form")
 
-# Columns for Product, Customer Name, and Phone
+# ====== Row 0: Month & Year selection (before product) ======
+row0_col1, row0_col2, _ = st.columns([1,1,1.2])
+
+today = date.today()
+years = list(range(2017, today.year + 2))  # adjust range if you want
+months = [
+    ("01","January"), ("02","February"), ("03","March"), ("04","April"),
+    ("05","May"), ("06","June"), ("07","July"), ("08","August"),
+    ("09","September"), ("10","October"), ("11","November"), ("12","December")
+]
+
+with row0_col1:
+    sel_year = st.selectbox("Year", years, index=years.index(today.year))
+
+with row0_col2:
+    month_codes = [m[0] for m in months]
+    month_labels = [m[1] for m in months]
+    sel_month_label = st.selectbox("Month", month_labels, index=int(today.strftime("%m"))-1)
+    sel_month = month_codes[month_labels.index(sel_month_label)]
+
+sale_period = f"{sel_year}-{sel_month}"
+
+# ====== Row 1: Product, Customer, Phone ======
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -25,6 +47,7 @@ with col2:
 with col3:
     customer_phone = st.text_input("Phone Number")
 
+# Pull product info
 product_row = inventory_df[inventory_df['Product Name'] == selected_product].iloc[0]
 price_per_unit = product_row['Price Per Unit']
 quantity_in_stock = product_row['Quantity In Stock']
@@ -39,11 +62,14 @@ st.write(f"**Total Sale Amount:** {total_sale} $")
 confirm = st.checkbox("Confirm sale submission")
 
 if st.button("Record Sale", type="primary") and confirm:
+    # Update inventory
     inventory_df.loc[inventory_df['Product Name'] == selected_product, 'Quantity In Stock'] -= quantity_sold
     inventory_df.to_excel(inventory_file, index=False)
 
+    # Build sale log row
     sale_log = pd.DataFrame({
-        'Date': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        'Date': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],  # precise timestamp
+        'Sale Period (YYYY-MM)': [sale_period],                   # reporting period
         'Customer Name': [customer_name],
         'Phone Number': [customer_phone],
         'Product Name': [selected_product],
@@ -52,6 +78,7 @@ if st.button("Record Sale", type="primary") and confirm:
         'Total Sale Amount': [total_sale]
     })
 
+    # Append to CSV
     try:
         existing_log = pd.read_csv('sales_log.csv')
         sale_log = pd.concat([existing_log, sale_log], ignore_index=True)
@@ -59,7 +86,7 @@ if st.button("Record Sale", type="primary") and confirm:
         pass
 
     sale_log.to_csv('sales_log.csv', index=False)
-    st.success(f"Sale of {quantity_sold} {selected_product} recorded!")
+    st.success(f"Sale of {quantity_sold} {selected_product} recorded for {sale_period}!")
 
     updated_stock = inventory_df[inventory_df['Product Name'] == selected_product]['Quantity In Stock'].values[0]
     st.info(f"Updated stock for **{selected_product}**: {int(updated_stock)} units remaining.")
@@ -100,12 +127,12 @@ with col2:
     try:
         sales_log_df = pd.read_csv('sales_log.csv')
 
-        today = datetime.now().strftime("%Y-%m-%d")
-        today_sales = sales_log_df[sales_log_df['Date'].str.startswith(today)]
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_sales = sales_log_df[sales_log_df['Date'].str.startswith(today_str)]
         today_revenue = today_sales['Total Sale Amount'].sum()
         today_transactions = len(today_sales)
 
-        st.subheader(f"📅 Today's Summary: {today}")
+        st.subheader(f"📅 Today's Summary: {today_str}")
 
         summary_col1, summary_col2 = st.columns(2)
         with summary_col1:
@@ -146,7 +173,6 @@ with col2:
         st.warning("No sales have been recorded yet.")
 
 # --- OPTIONAL ANALYTICS SECTION ---
-# --- OPTIONAL ANALYTICS SECTION ---
 import matplotlib.pyplot as plt
 
 st.markdown("---")
@@ -156,10 +182,10 @@ try:
     sales_log_df = pd.read_csv('sales_log.csv')
     sales_log_df['Date'] = pd.to_datetime(sales_log_df['Date'])
 
-    col1, col2 = st.columns(2)
+    colA, colB = st.columns(2)
 
-    # --- LEFT: Top-Selling Products ---
-    with col1:
+    # LEFT: Top-Selling Products
+    with colA:
         st.subheader("🏆 Top-Selling Products")
         top_products = sales_log_df.groupby('Product Name')['Quantity Sold'].sum().sort_values(ascending=True)
 
@@ -169,8 +195,8 @@ try:
         ax1.set_title("Top-Selling Products")
         st.pyplot(fig1)
 
-    # --- RIGHT: Daily Revenue for Selected Month ---
-    with col2:
+    # RIGHT: Daily Revenue for Selected Month
+    with colB:
         st.subheader("📅 Daily Revenue (Selected Month)")
         selected_month = st.date_input("Select Month to Analyze", value=datetime.today().replace(day=1), key="daily_rev_input")
 
@@ -188,8 +214,9 @@ try:
         ax2.set_xlabel("Day of Month")
         ax2.set_ylabel("Revenue ($)")
         ax2.set_title(f"Daily Revenue - {month_str}")
-        # No ax2.grid() here
         st.pyplot(fig2)
 
 except FileNotFoundError:
     st.info("Analytics unavailable (no sales data found).")
+
+
