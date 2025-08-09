@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
+import calendar
+import matplotlib.pyplot as plt
 
 # Load inventory
 inventory_file = 'inventory_2024_detailed-2.xlsx'
@@ -12,27 +14,38 @@ st.set_page_config(page_title="Baba Jina POS", layout="wide")
 st.title("📦 Baba Jina Toys POS System")
 st.header("Sales Entry Form")
 
-# ====== Row 0: Month & Year selection (before product) ======
-row0_col1, row0_col2, _ = st.columns([1,1,1.2])
+# ====== Row 0: Year / Month / Day selection (drives logging + dashboard) ======
+row0_col1, row0_col2, row0_col3, _ = st.columns([1, 1, 1, 0.6])
 
 today = date.today()
-years = list(range(2017, today.year + 2))  # adjust range if you want
+years = list(range(2017, today.year + 2))
+
 months = [
     ("01","January"), ("02","February"), ("03","March"), ("04","April"),
     ("05","May"), ("06","June"), ("07","July"), ("08","August"),
     ("09","September"), ("10","October"), ("11","November"), ("12","December")
 ]
+month_codes = [m[0] for m in months]
+month_labels = [m[1] for m in months]
 
 with row0_col1:
     sel_year = st.selectbox("Year", years, index=years.index(today.year))
 
 with row0_col2:
-    month_codes = [m[0] for m in months]
-    month_labels = [m[1] for m in months]
     sel_month_label = st.selectbox("Month", month_labels, index=int(today.strftime("%m"))-1)
     sel_month = month_codes[month_labels.index(sel_month_label)]
+    sel_month_int = int(sel_month)
 
-sale_period = f"{sel_year}-{sel_month}"
+with row0_col3:
+    # limit days to the chosen month/year
+    last_day = calendar.monthrange(sel_year, sel_month_int)[1]
+    default_day = min(today.day, last_day)
+    sel_day = st.selectbox("Day", list(range(1, last_day + 1)), index=default_day - 1)
+
+# Final selected date & period used everywhere below
+selected_dt = date(sel_year, sel_month_int, int(sel_day))
+selected_date_str = selected_dt.strftime("%Y-%m-%d")
+sale_period = selected_dt.strftime("%Y-%m")
 
 # ====== Row 1: Product, Customer, Phone ======
 col1, col2, col3 = st.columns(3)
@@ -68,8 +81,9 @@ if st.button("Record Sale", type="primary") and confirm:
 
     # Build sale log row
     sale_log = pd.DataFrame({
-        'Date': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],  # precise timestamp
-        'Sale Period (YYYY-MM)': [sale_period],                   # reporting period
+        'Date': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],   # precise timestamp
+        'Sale Date (YYYY-MM-DD)': [selected_date_str],            # user-selected calendar date
+        'Sale Period (YYYY-MM)': [sale_period],                    # reporting period
         'Customer Name': [customer_name],
         'Phone Number': [customer_phone],
         'Product Name': [selected_product],
@@ -86,7 +100,7 @@ if st.button("Record Sale", type="primary") and confirm:
         pass
 
     sale_log.to_csv('sales_log.csv', index=False)
-    st.success(f"Sale of {quantity_sold} {selected_product} recorded for {sale_period}!")
+    st.success(f"Sale of {quantity_sold} {selected_product} recorded for {selected_date_str}!")
 
     updated_stock = inventory_df[inventory_df['Product Name'] == selected_product]['Quantity In Stock'].values[0]
     st.info(f"Updated stock for **{selected_product}**: {int(updated_stock)} units remaining.")
@@ -127,19 +141,24 @@ with col2:
     try:
         sales_log_df = pd.read_csv('sales_log.csv')
 
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        today_sales = sales_log_df[sales_log_df['Date'].str.startswith(today_str)]
-        today_revenue = today_sales['Total Sale Amount'].sum()
-        today_transactions = len(today_sales)
+        # Prefer the explicit Sale Date column; otherwise fall back to timestamp prefix
+        if 'Sale Date (YYYY-MM-DD)' in sales_log_df.columns:
+            day_mask = sales_log_df['Sale Date (YYYY-MM-DD)'] == selected_date_str
+        else:
+            day_mask = sales_log_df['Date'].str.startswith(selected_date_str)
 
-        st.subheader(f"📅 Today's Summary: {today_str}")
+        day_sales = sales_log_df[day_mask]
+        day_revenue = day_sales['Total Sale Amount'].sum()
+        day_transactions = len(day_sales)
 
+        st.subheader(f"📅 Selected Date Summary: {selected_date_str}")
         summary_col1, summary_col2 = st.columns(2)
         with summary_col1:
-            st.write(f"**Transactions Today:** {today_transactions}")
+            st.write(f"**Transactions:** {day_transactions}")
         with summary_col2:
-            st.write(f"**Revenue Today:** {today_revenue:.2f} $")
+            st.write(f"**Revenue:** {day_revenue:.2f} $")
 
+        # Show latest first
         sales_log_df = sales_log_df.iloc[::-1].reset_index(drop=True)
         st.dataframe(sales_log_df, use_container_width=True, height=400)
 
@@ -147,25 +166,30 @@ with col2:
         total_transactions = len(sales_log_df)
 
         totals_col, export_col = st.columns([1, 1.5])
-
         with totals_col:
-            st.write(f"**Total Transactions:** {total_transactions}")
-            st.write(f"**Total Sales Revenue:** {total_sales:.2f} $")
+            st.write(f"**All-Time Transactions:** {total_transactions}")
+            st.write(f"**All-Time Revenue:** {total_sales:.2f} $")
 
         with export_col:
             st.subheader("📥 Export Daily Report")
-            selected_day = st.date_input("Select Day:", key="export_date_bottom")
-            selected_day_str = selected_day.strftime("%Y-%m-%d")
-            day_sales = sales_log_df[sales_log_df['Date'].str.startswith(selected_day_str)]
+            # Default export date = the same selected date above
+            exp_day = st.date_input("Select Day:", key="export_date_bottom", value=selected_dt)
+            exp_day_str = exp_day.strftime("%Y-%m-%d")
 
-            if day_sales.empty:
-                st.info(f"No sales recorded on {selected_day_str}.")
+            if 'Sale Date (YYYY-MM-DD)' in sales_log_df.columns:
+                exp_mask = sales_log_df['Sale Date (YYYY-MM-DD)'] == exp_day_str
             else:
-                csv = day_sales.to_csv(index=False).encode('utf-8')
+                exp_mask = sales_log_df['Date'].str.startswith(exp_day_str)
+
+            exp_sales = sales_log_df[exp_mask]
+            if exp_sales.empty:
+                st.info(f"No sales recorded on {exp_day_str}.")
+            else:
+                csv = exp_sales.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label=f"Download Sales Report for {selected_day_str}",
+                    label=f"Download Sales Report for {exp_day_str}",
                     data=csv,
-                    file_name=f"sales_report_{selected_day_str}.csv",
+                    file_name=f"sales_report_{exp_day_str}.csv",
                     mime='text/csv'
                 )
 
@@ -173,8 +197,6 @@ with col2:
         st.warning("No sales have been recorded yet.")
 
 # --- OPTIONAL ANALYTICS SECTION ---
-import matplotlib.pyplot as plt
-
 st.markdown("---")
 st.header("📊 Analytics View")
 
@@ -188,18 +210,16 @@ try:
     with colA:
         st.subheader("🏆 Top-Selling Products")
         top_products = sales_log_df.groupby('Product Name')['Quantity Sold'].sum().sort_values(ascending=True)
-
         fig1, ax1 = plt.subplots(figsize=(5, 3))
         ax1.barh(top_products.index, top_products.values, color='mediumseagreen')
         ax1.set_xlabel("Units Sold")
         ax1.set_title("Top-Selling Products")
         st.pyplot(fig1)
 
-    # RIGHT: Daily Revenue for Selected Month
+    # RIGHT: Daily Revenue for Selected Month (still available)
     with colB:
         st.subheader("📅 Daily Revenue (Selected Month)")
-        selected_month = st.date_input("Select Month to Analyze", value=datetime.today().replace(day=1), key="daily_rev_input")
-
+        selected_month = st.date_input("Select Month to Analyze", value=selected_dt.replace(day=1), key="daily_rev_input")
         month_str = selected_month.strftime("%Y-%m")
         monthly_sales = sales_log_df[sales_log_df['Date'].dt.strftime("%Y-%m") == month_str]
 
@@ -218,5 +238,4 @@ try:
 
 except FileNotFoundError:
     st.info("Analytics unavailable (no sales data found).")
-
 
